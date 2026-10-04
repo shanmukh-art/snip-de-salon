@@ -1,0 +1,33 @@
+{
+  "name": "snip-de-salon",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Snip De Salon - Full-Stack Luxury Beauty Salon & Business Management Platform",
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "install:all": "npm install && cd server && npm install && cd ../client && npm install",
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm run dev",
+    "dev": "concurrently -n \"SERVER,CLIENT\" -c \"cyan,yellow\" \"npm --prefix server run dev\" \"npm --prefix client run dev\"",
+    "start": "concurrently -n \"SERVER,CLIENT\" -c \"cyan,yellow\" \"npm --prefix server run dev\" \"npm --prefix client run dev\"",
+    "build": "cd server && npm run build && cd ../client && npm run build",
+    "test": "cd server && npm run test"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "keywords": [
+    "salon",
+    "beauty",
+    "booking",
+    "ecommerce",
+    "react",
+    "express",
+    "prisma"
+  ],
+  "author": "Snip De Salon",
+  "license": "ISC"
+}
