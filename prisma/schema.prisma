@@ -1,0 +1,314 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  passwordHash String
+  name         String
+  phone        String?
+  role         String        @default("CUSTOMER") // ADMIN, CUSTOMER, STAFF
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  customerProfile Customer?
+  staffProfile    Staff?
+  notifications   Notification[]
+}
+
+model Customer {
+  id           String        @id @default(cuid())
+  userId       String        @unique
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  address      String?
+  notes        String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  appointments Appointment[]
+  orders       Order[]
+  reviews      Review[]
+  cart         Cart?
+}
+
+model Staff {
+  id                String          @id @default(cuid())
+  userId            String?         @unique
+  user              User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name              String
+  email             String?
+  phone             String?
+  roleTitle         String          // e.g. "Senior Hair Stylist & Color Specialist"
+  bio               String?
+  avatar            String?
+  isActive          Boolean         @default(true)
+  workingHoursStart String          @default("09:00")
+  workingHoursEnd   String          @default("20:00")
+  workingDays       String          @default("Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday")
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  services          StaffService[]
+  appointments      Appointment[]
+  schedules         StaffSchedule[]
+}
+
+model StaffSchedule {
+  id        String   @id @default(cuid())
+  staffId   String
+  staff     Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  dayOfWeek Int      // 0 = Sunday, 1 = Monday ... 6 = Saturday
+  startTime String   @default("09:00")
+  endTime   String   @default("20:00")
+  isDayOff  Boolean  @default(false)
+}
+
+model ServiceCategory {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  slug        String    @unique
+  description String?
+  image       String?
+  orderIndex  Int       @default(0)
+  services    Service[]
+}
+
+model Service {
+  id              String          @id @default(cuid())
+  name            String
+  slug            String          @unique
+  categoryId      String
+  category        ServiceCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  description     String
+  benefits        String?         // JSON string or newline-separated
+  durationMinutes Int             @default(45)
+  price           Float
+  originalPrice   Float?
+  image           String?
+  isActive        Boolean         @default(true)
+  isFeatured      Boolean         @default(false)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  staffMembers    StaffService[]
+  appointments    Appointment[]
+  reviews         Review[]
+}
+
+model StaffService {
+  id        String  @id @default(cuid())
+  staffId   String
+  staff     Staff   @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  serviceId String
+  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([staffId, serviceId])
+}
+
+model Appointment {
+  id               String    @id @default(cuid())
+  bookingReference String    @unique // e.g. "SND-84930"
+  customerId       String
+  customer         Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  staffId          String?
+  staff            Staff?    @relation(fields: [staffId], references: [id], onDelete: SetNull)
+  serviceId        String
+  service          Service   @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  date             String    // YYYY-MM-DD
+  startTime        String    // HH:mm
+  endTime          String    // HH:mm
+  status           String    @default("PENDING") // PENDING, CONFIRMED, RESCHEDULED, COMPLETED, CANCELLED, NO_SHOW
+  notes            String?
+  totalAmount      Float
+  paymentStatus    String    @default("PENDING") // PENDING, PAID, REFUNDED
+  paymentMethod    String    @default("SALON")   // ONLINE, SALON
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  payment          Payment?
+}
+
+model ProductCategory {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  slug        String    @unique
+  description String?
+  image       String?
+  products    Product[]
+}
+
+model Product {
+  id              String          @id @default(cuid())
+  name            String
+  slug            String          @unique
+  categoryId      String
+  category        ProductCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  description     String
+  price           Float
+  discountPercent Float           @default(0)
+  stock           Int             @default(10)
+  sku             String          @unique
+  rating          Float           @default(5.0)
+  image           String?
+  isFeatured      Boolean         @default(false)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  cartItems       CartItem[]
+  orderItems      OrderItem[]
+}
+
+model Cart {
+  id         String     @id @default(cuid())
+  customerId String     @unique
+  customer   Customer   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  items      CartItem[]
+  updatedAt  DateTime   @updatedAt
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  cartId    String
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Int      @default(1)
+
+  @@unique([cartId, productId])
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  orderNumber     String      @unique // e.g. "ORD-9281"
+  customerId      String?
+  customer        Customer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerName    String
+  customerEmail   String
+  customerPhone   String
+  shippingAddress String
+  totalAmount     Float
+  status          String      @default("PENDING") // PENDING, CONFIRMED, PROCESSING, READY, SHIPPED, DELIVERED, CANCELLED
+  paymentStatus   String      @default("PENDING") // PENDING, PAID, FAILED
+  paymentMethod   String      @default("ONLINE")
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  items           OrderItem[]
+  payment         Payment?
+}
+
+model OrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Int
+  unitPrice Float
+}
+
+model Payment {
+  id             String       @id @default(cuid())
+  orderId        String?      @unique
+  order          Order?       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  appointmentId  String?      @unique
+  appointment    Appointment? @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  amount         Float
+  currency       String       @default("INR")
+  provider       String       @default("RAZORPAY") // RAZORPAY, CASH, CARD
+  transactionId  String?
+  status         String       @default("SUCCESS")  // PENDING, SUCCESS, FAILED
+  createdAt      DateTime     @default(now())
+}
+
+model Offer {
+  id            String    @id @default(cuid())
+  title         String
+  slug          String    @unique
+  description   String
+  originalPrice Float
+  offerPrice    Float
+  badgeText     String?   // e.g. "Bridal Exclusive", "Limited Festive 30% Off"
+  image         String?
+  validUntil    String?   // YYYY-MM-DD
+  terms         String?
+  isActive      Boolean   @default(true)
+  isFeatured    Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  serviceId  String
+  service    Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  rating     Int      @default(5)
+  comment    String
+  isApproved Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String   @default("INFO") // BOOKING, ORDER, PROMO, SYSTEM
+  isRead    Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+}
+
+model ContactInquiry {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  subject   String?
+  message   String
+  status    String   @default("NEW") // NEW, IN_PROGRESS, RESOLVED
+  createdAt DateTime @default(now())
+}
+
+model Coupon {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  discountPct Float
+  maxDiscount Float?
+  minSpend    Float?
+  isActive    Boolean  @default(true)
+  validUntil  String?
+  createdAt   DateTime @default(now())
+}
+
+model SiteSettings {
+  id                     String  @id @default("default")
+  salonName              String  @default("Snip De Salon")
+  tagline                String  @default("Luxury Beauty, Hair & Wellness Sanctuary")
+  phone                  String  @default("+91 891 234 5678")
+  email                  String  @default("concierge@snipdesalon.com")
+  address                String  @default("Main Road, Sujatha Nagar")
+  city                   String  @default("Visakhapatnam")
+  state                  String  @default("Andhra Pradesh")
+  postalCode             String  @default("530051")
+  country                String  @default("India")
+  openingHours           String  @default("Mon - Sun: 09:00 AM - 08:30 PM")
+  googleMapsUrl          String  @default("https://maps.google.com/?q=Sujatha+Nagar+Visakhapatnam")
+  instagramUrl           String  @default("https://instagram.com/snipdesalon")
+  facebookUrl            String  @default("https://facebook.com/snipdesalon")
+  whatsappNumber         String  @default("+919876543210")
+  bookingNotice          String  @default("Please arrive 10 minutes prior to your appointment time.")
+  cancellationPolicyHours Int    @default(2)
+  currencySymbol         String  @default("₹")
+  taxRatePercent         Float   @default(18.0)
+}

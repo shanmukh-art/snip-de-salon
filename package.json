@@ -17,6 +17,10 @@
     "build:all": "npm --prefix server run build && npm --prefix client run build",
     "test": "npm --prefix server test"
   },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "prisma": "^5.22.0"
+  },
   "devDependencies": {
     "concurrently": "^9.1.2"
   },
