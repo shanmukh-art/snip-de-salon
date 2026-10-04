@@ -9,12 +9,13 @@
   ],
   "scripts": {
     "install:all": "npm install && cd server && npm install && cd ../client && npm install",
-    "dev:server": "cd server && npm run dev",
-    "dev:client": "cd client && npm run dev",
+    "dev:server": "npm --prefix server run dev",
+    "dev:client": "npm --prefix client run dev",
     "dev": "concurrently -n \"SERVER,CLIENT\" -c \"cyan,yellow\" \"npm --prefix server run dev\" \"npm --prefix client run dev\"",
-    "start": "concurrently -n \"SERVER,CLIENT\" -c \"cyan,yellow\" \"npm --prefix server run dev\" \"npm --prefix client run dev\"",
-    "build": "cd server && npm run build && cd ../client && npm run build",
-    "test": "cd server && npm run test"
+    "start": "npm --prefix server start",
+    "build": "npm --prefix server run build",
+    "build:all": "npm --prefix server run build && npm --prefix client run build",
+    "test": "npm --prefix server test"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
