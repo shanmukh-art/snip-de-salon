@@ -12,7 +12,7 @@
     "dev:server": "npm --prefix server run dev",
     "dev:client": "npm --prefix client run dev",
     "dev": "concurrently -n \"SERVER,CLIENT\" -c \"cyan,yellow\" \"npm --prefix server run dev\" \"npm --prefix client run dev\"",
-    "start": "npm --prefix server start",
+    "start": "npx prisma db push --accept-data-loss && npm --prefix server start",
     "build": "npm --prefix server run build",
     "build:all": "npm --prefix server run build && npm --prefix client run build",
     "test": "npm --prefix server test"

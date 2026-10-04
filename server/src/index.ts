@@ -1,8 +1,11 @@
+import { execSync } from 'child_process';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import { config } from './config';
+import { prisma } from './prisma';
+import { seedDatabase } from './seed';
 import { errorHandler } from './middleware/errorHandler';
 
 // Route imports
@@ -261,15 +264,40 @@ app.use('/api/admin', adminRoutes);
 // Central error handler
 app.use(errorHandler);
 
-// Start server if not in test mode
+// Start server with automatic database initialization if not in test mode
 if (process.env.NODE_ENV !== 'test') {
-  app.listen(config.port, () => {
-    console.log(`\n========================================================`);
-    console.log(`✨ Snip De Salon Backend API is running on http://localhost:${config.port}`);
-    console.log(`💎 Location: Sujatha Nagar, Visakhapatnam, AP, India`);
-    console.log(`📡 Environment: ${config.nodeEnv}`);
-    console.log(`========================================================\n`);
-  });
+  async function bootstrap() {
+    try {
+      await prisma.user.count();
+    } catch (err: any) {
+      console.log('📦 Database tables not yet initialized. Running prisma db push...');
+      try {
+        execSync('npx prisma db push --accept-data-loss', { stdio: 'inherit' });
+      } catch (pushErr) {
+        console.error('Failed to run prisma db push automatically:', pushErr);
+      }
+    }
+
+    try {
+      const admin = await prisma.user.findFirst({ where: { role: 'ADMIN' } });
+      if (!admin) {
+        console.log('🌱 No admin user found in database. Running seed...');
+        await seedDatabase(prisma);
+      }
+    } catch (seedErr) {
+      console.error('Error during auto-seed check:', seedErr);
+    }
+
+    app.listen(config.port, () => {
+      console.log(`\n========================================================`);
+      console.log(`✨ Snip De Salon Backend API is running on http://localhost:${config.port}`);
+      console.log(`💎 Location: Sujatha Nagar, Visakhapatnam, AP, India`);
+      console.log(`📡 Environment: ${config.nodeEnv}`);
+      console.log(`========================================================\n`);
+    });
+  }
+
+  bootstrap();
 }
 
 export default app;
